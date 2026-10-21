@@ -1,7 +1,7 @@
 # GtTerminalTabs
 
 > [!WARNING]
-> AI-generated code (Claude, by Anthropic), human-directed and tested in-game. Use at your own risk.
+> The code in this project is made by generative AI.
 
 Client-side GTNH addon: category tabs beside ME terminals. A tab's NEI search filters the terminal; the search box searches within it.
 
