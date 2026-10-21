@@ -1,7 +1,6 @@
 package net.celsiuss.gtterminaltabs.client;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -19,7 +18,6 @@ import org.lwjgl.input.Mouse;
 
 import appeng.client.gui.widgets.ITooltip;
 import codechicken.nei.LayoutManager;
-import codechicken.nei.SearchField;
 import codechicken.nei.SearchTextFormatter;
 import codechicken.nei.VisiblityData;
 import codechicken.nei.api.INEIGuiHandler;
@@ -36,7 +34,7 @@ import codechicken.nei.api.TaggedInventoryArea;
 public class GuiTabSettings extends GuiContainer implements INEIGuiHandler {
 
     private static final int WIDTH = 260;
-    private static final int HEIGHT = 156;
+    private static final int HEIGHT = 184;
     private static final int PADDING = 6;
     private static final int LIST_WIDTH = 104;
     private static final int BUTTON_SIZE = 20;
@@ -49,33 +47,53 @@ public class GuiTabSettings extends GuiContainer implements INEIGuiHandler {
     private static final int NAME_MAX_LENGTH = 64;
     private static final int VALUE_MAX_LENGTH = 256;
     private static final int ICON_TEXT_LINES = 2;
+    private static final int PAGE_WIDTH = 60;
+    private static final int PAGE_HEIGHT = 14;
+    private static final int OPTION_ROW_HEIGHT = 16;
+    private static final int CHECKBOX_ROW_HEIGHT = 14;
+    // Wide enough for a description to read as a paragraph rather than a column.
+    private static final int TOOLTIP_WIDTH = 200;
 
-    private static final int LIST_ID_BASE = 100;
+    // Button IDs. The ranges are counted per page, option and tab, so each starts clear of the one before.
     private static final int ADD_ID = 0;
     private static final int REMOVE_ID = 1;
     private static final int UP_ID = 2;
     private static final int DOWN_ID = 3;
     private static final int DONE_ID = 4;
+    private static final int PREFIXES_ID = 5;
+    private static final int PAGE_ID_BASE = 10;
+    private static final int OPTION_ID_BASE = 50;
+    private static final int LIST_ID_BASE = 100;
+
     private static final int NO_RELAYOUT = -2;
 
     private final GuiScreen parent;
     private final TabStore store;
     private final List<TabEntry> entries;
     private final ScrollableButtonList list;
+    private Page page = Page.TABS;
 
     private FlatTextField nameField;
     private FlatTextField valueField;
     private GuiButton removeButton;
     private GuiButton upButton;
     private GuiButton downButton;
+    private CheckboxButton prefixesBox;
     private int iconX;
     private int iconY;
     private int footerTop;
-    // Set by button presses that change the number of entries; applied once vanilla's click loop has finished.
+    // Set by button presses that rebuild the widgets, and applied once vanilla's click loop has finished: the entry to
+    // select after the number of entries changed, and whether the page changed.
     private int pendingSelection = NO_RELAYOUT;
+    private boolean pendingPageChange;
     private boolean focusNameAfterRelayout;
 
     public GuiTabSettings(GuiScreen parent, TabStore store) {
+        this(parent, store, 0);
+    }
+
+    /** Opens the editor with the tab at {@code selected} chosen for editing. */
+    public GuiTabSettings(GuiScreen parent, TabStore store, int selected) {
         super(new EditorContainer());
         this.parent = parent;
         this.store = store;
@@ -83,7 +101,7 @@ public class GuiTabSettings extends GuiContainer implements INEIGuiHandler {
         this.list = new ScrollableButtonList(LIST_ID_BASE, entries);
         this.xSize = WIDTH;
         this.ySize = HEIGHT;
-        if (!entries.isEmpty()) list.setSelected(0);
+        if (!entries.isEmpty()) list.setSelected(Math.max(0, Math.min(selected, entries.size() - 1)));
     }
 
     /** The screen this editor returns to: the terminal it was opened from. */
@@ -100,13 +118,30 @@ public class GuiTabSettings extends GuiContainer implements INEIGuiHandler {
         Keyboard.enableRepeatEvents(true);
         buttonList.clear();
 
-        int contentTop = guiTop + PADDING + fontRendererObj.FONT_HEIGHT + 2 * LABEL_GAP;
+        int pageX = guiLeft + PADDING;
+        for (Page each : Page.values()) {
+            buttonList.add(
+                new PageButton(
+                    PAGE_ID_BASE + each.ordinal(),
+                    pageX,
+                    guiTop + PADDING,
+                    PAGE_WIDTH,
+                    PAGE_HEIGHT,
+                    each.label.getLocal(),
+                    each == page));
+            pageX += PAGE_WIDTH + BUTTON_GAP;
+        }
+
+        // Every widget is built on both pages, since the rest of the editor reads them, but only the current page's
+        // are put on screen.
+        List<GuiButton> pageWidgets = new ArrayList<>();
+        int contentTop = guiTop + PADDING + PAGE_HEIGHT + PADDING;
         int bottomRow = guiTop + HEIGHT - PADDING - BUTTON_SIZE;
-        buttonList.addAll(list.layout(guiLeft + PADDING, contentTop, LIST_WIDTH, bottomRow - contentTop - PADDING));
+        pageWidgets.addAll(list.layout(guiLeft + PADDING, contentTop, LIST_WIDTH, bottomRow - contentTop - PADDING));
         list.setSelected(list.getSelected());
 
         if (entries.isEmpty()) {
-            buttonList.add(
+            pageWidgets.add(
                 new HintLabel(
                     guiLeft + PADDING,
                     contentTop,
@@ -117,7 +152,7 @@ public class GuiTabSettings extends GuiContainer implements INEIGuiHandler {
         footerTop = bottomRow - PADDING / 2 - 1;
 
         int buttonX = guiLeft + PADDING;
-        buttonList.add(
+        pageWidgets.add(
             new GlyphButton(
                 ADD_ID,
                 buttonX,
@@ -146,9 +181,10 @@ public class GuiTabSettings extends GuiContainer implements INEIGuiHandler {
             BUTTON_SIZE,
             GlyphButton.Glyph.DOWN,
             GtGuiText.MoveDown.getLocal());
-        buttonList.add(removeButton);
-        buttonList.add(upButton);
-        buttonList.add(downButton);
+        pageWidgets.add(removeButton);
+        pageWidgets.add(upButton);
+        pageWidgets.add(downButton);
+        if (page == Page.TABS) buttonList.addAll(pageWidgets);
         buttonList.add(
             new TooltipButton(
                 DONE_ID,
@@ -167,10 +203,37 @@ public class GuiTabSettings extends GuiContainer implements INEIGuiHandler {
         nameField.setMaxStringLength(NAME_MAX_LENGTH);
         valueField = new FlatTextField(fontRendererObj, fieldX, valueTop, fieldWidth, FIELD_HEIGHT);
         valueField.setMaxStringLength(VALUE_MAX_LENGTH);
-        valueField.setFormatter(new SearchTextFormatter(SearchField.searchParser));
+        int prefixesTop = valueTop + FIELD_HEIGHT + PADDING;
+        prefixesBox = new CheckboxButton(
+            PREFIXES_ID,
+            fieldX,
+            prefixesTop,
+            fieldWidth,
+            CHECKBOX_ROW_HEIGHT,
+            GtGuiText.TabAlwaysPrefixes.getLocal(),
+            "",
+            false);
+        if (page == Page.TABS) buttonList.add(prefixesBox);
         iconX = fieldX;
-        iconY = valueTop + FIELD_HEIGHT + PADDING + lineHeight;
+        iconY = prefixesTop + CHECKBOX_ROW_HEIGHT + PADDING + lineHeight;
         loadSelection();
+
+        if (page == Page.SETTINGS) {
+            int rowTop = contentTop;
+            for (TabsConfig.Option option : TabsConfig.Option.values()) {
+                buttonList.add(
+                    new CheckboxButton(
+                        OPTION_ID_BASE + option.ordinal(),
+                        guiLeft + PADDING,
+                        rowTop,
+                        WIDTH - 2 * PADDING,
+                        OPTION_ROW_HEIGHT,
+                        option.label(),
+                        option.info(),
+                        option.get()));
+                rowTop += OPTION_ROW_HEIGHT + BUTTON_GAP;
+            }
+        }
     }
 
     @Override
@@ -205,7 +268,7 @@ public class GuiTabSettings extends GuiContainer implements INEIGuiHandler {
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
         drawDefaultBackground();
         super.drawScreen(mouseX, mouseY, partialTicks);
-        if (hasSelection() && (isOverIconSlot(mouseX, mouseY) || isOverIconText(mouseX, mouseY))) {
+        if (onTabsPage() && hasSelection() && (isOverIconSlot(mouseX, mouseY) || isOverIconText(mouseX, mouseY))) {
             drawIconTooltip(mouseX, mouseY);
         } else {
             drawButtonTooltip(mouseX, mouseY);
@@ -223,8 +286,14 @@ public class GuiTabSettings extends GuiContainer implements INEIGuiHandler {
                 || mouseY >= widget.yPos() + widget.getHeight()) continue;
             String message = widget.getMessage();
             if (message == null || message.isEmpty()) return;
-            List<String> lines = new ArrayList<>(Arrays.asList(message.split("\n")));
-            for (int i = 1; i < lines.size(); i++) lines.set(i, EnumChatFormatting.GRAY + lines.get(i));
+            List<String> lines = new ArrayList<>();
+            String[] parts = message.split("\n");
+            for (int i = 0; i < parts.length; i++) {
+                // Descriptions are written as one line; wrap them rather than run off the screen.
+                for (Object wrapped : fontRendererObj.listFormattedStringToWidth(parts[i], TOOLTIP_WIDTH)) {
+                    lines.add(i == 0 ? (String) wrapped : EnumChatFormatting.GRAY + (String) wrapped);
+                }
+            }
             drawHoveringText(lines, mouseX, mouseY, fontRendererObj);
             return;
         }
@@ -235,13 +304,7 @@ public class GuiTabSettings extends GuiContainer implements INEIGuiHandler {
         int right = guiLeft + WIDTH;
         FlatStyle.drawBox(guiLeft, guiTop, right, guiTop + HEIGHT, FlatStyle.PANEL_FILL, FlatStyle.PANEL_BORDER);
         drawRect(guiLeft + 1, footerTop, right - 1, footerTop + 1, FlatStyle.DIVIDER);
-        drawString(
-            fontRendererObj,
-            GtGuiText.TabSettings.getLocal(),
-            guiLeft + PADDING,
-            guiTop + PADDING,
-            FlatStyle.TEXT_BRIGHT);
-        if (!hasSelection()) return;
+        if (page == Page.SETTINGS || !hasSelection()) return;
 
         drawFieldLabel(GtGuiText.Name.getLocal(), nameField.getBoxX(), nameField.getBoxY());
         drawFieldLabel(GtGuiText.SearchValue.getLocal(), valueField.getBoxX(), valueField.getBoxY());
@@ -322,7 +385,8 @@ public class GuiTabSettings extends GuiContainer implements INEIGuiHandler {
 
     @Override
     public boolean handleDragNDrop(GuiContainer gui, int mouseX, int mouseY, ItemStack draggedStack, int button) {
-        if (gui != this || draggedStack == null || !hasSelection() || !isOverIconSlot(mouseX, mouseY)) return false;
+        if (gui != this || draggedStack == null || !onTabsPage() || !hasSelection() || !isOverIconSlot(mouseX, mouseY))
+            return false;
         // Like AE2's fake slots, copy the stack and leave NEI's drag alone so it can be dropped elsewhere too.
         entries.get(list.getSelected()).icon = TabIcon.of(draggedStack);
         return true;
@@ -352,6 +416,27 @@ public class GuiTabSettings extends GuiContainer implements INEIGuiHandler {
 
     @Override
     protected void actionPerformed(GuiButton button) {
+        if (button.id >= PAGE_ID_BASE && button.id < PAGE_ID_BASE + Page.values().length) {
+            Page chosen = Page.values()[button.id - PAGE_ID_BASE];
+            if (chosen != page) {
+                page = chosen;
+                pendingPageChange = true;
+            }
+            return;
+        }
+        if (button.id == PREFIXES_ID && hasSelection()) {
+            TabEntry entry = entries.get(list.getSelected());
+            entry.alwaysUsePrefixes = !entry.alwaysUsePrefixes;
+            loadPrefixes(entry);
+            return;
+        }
+        int option = button.id - OPTION_ID_BASE;
+        if (option >= 0 && option < TabsConfig.Option.values().length) {
+            CheckboxButton checkbox = (CheckboxButton) button;
+            checkbox.setChecked(!checkbox.isChecked());
+            TabsConfig.Option.values()[option].set(checkbox.isChecked());
+            return;
+        }
         int index = list.entryIndexOf(button);
         if (index >= 0) {
             select(index);
@@ -404,7 +489,7 @@ public class GuiTabSettings extends GuiContainer implements INEIGuiHandler {
      * @return true if the editor consumed the key
      */
     public boolean handleKey(char typedChar, int keyCode) {
-        if (keyCode == Keyboard.KEY_ESCAPE || !hasSelection()) return false;
+        if (keyCode == Keyboard.KEY_ESCAPE || !onTabsPage() || !hasSelection()) return false;
         boolean editing = nameField.isFocused() || valueField.isFocused();
         // Leave keys to NEI while its search box has focus.
         if (!editing && LayoutManager.getInputFocused() != null) return false;
@@ -453,18 +538,18 @@ public class GuiTabSettings extends GuiContainer implements INEIGuiHandler {
 
     @Override
     protected void mouseClicked(int mouseX, int mouseY, int button) {
-        if (button == 0 && list.mousePressed(mouseX, mouseY)) return;
-        if (button == 1 && hasSelection() && isOverIconSlot(mouseX, mouseY)) {
+        if (onTabsPage() && button == 0 && list.mousePressed(mouseX, mouseY)) return;
+        if (onTabsPage() && button == 1 && hasSelection() && isOverIconSlot(mouseX, mouseY)) {
             entries.get(list.getSelected()).icon = null;
             return;
         }
         // Fields first: a button press may rebuild them or set focus, which a later click-outside would undo.
-        if (hasSelection()) {
+        if (onTabsPage() && hasSelection()) {
             nameField.mouseClicked(mouseX, mouseY, button);
             valueField.mouseClicked(mouseX, mouseY, button);
         }
         super.mouseClicked(mouseX, mouseY, button);
-        if (pendingSelection != NO_RELAYOUT) relayout();
+        if (pendingSelection != NO_RELAYOUT || pendingPageChange) relayout();
     }
 
     @Override
@@ -486,7 +571,7 @@ public class GuiTabSettings extends GuiContainer implements INEIGuiHandler {
         if (wheel == 0) return;
         int mouseX = Mouse.getEventX() * width / mc.displayWidth;
         int mouseY = height - Mouse.getEventY() * height / mc.displayHeight - 1;
-        if (list.contains(mouseX, mouseY)) list.scroll(Integer.signum(wheel));
+        if (onTabsPage() && list.contains(mouseX, mouseY)) list.scroll(Integer.signum(wheel));
     }
 
     private void close() {
@@ -494,12 +579,18 @@ public class GuiTabSettings extends GuiContainer implements INEIGuiHandler {
     }
 
     /**
-     * Rebuilds the widgets after the number of entries changed. Never call this from actionPerformed: vanilla walks
-     * buttonList by index while dispatching, so a rebuilt list can shift the pressed button under the cursor again.
+     * Rebuilds the widgets after the number of entries or the page changed. Never call this from actionPerformed:
+     * vanilla walks buttonList by index while dispatching, so a rebuilt list can shift the pressed button under the
+     * cursor again.
      */
     private void relayout() {
-        list.setSelected(pendingSelection);
+        if (pendingSelection != NO_RELAYOUT) list.setSelected(pendingSelection);
         pendingSelection = NO_RELAYOUT;
+        if (pendingPageChange) {
+            pendingPageChange = false;
+            // Leaving the tabs page must not leave a hidden field taking keys.
+            focus(null);
+        }
         initGui();
         if (focusNameAfterRelayout) {
             focusNameAfterRelayout = false;
@@ -522,6 +613,10 @@ public class GuiTabSettings extends GuiContainer implements INEIGuiHandler {
     private void select(int index) {
         list.setSelected(index);
         loadSelection();
+    }
+
+    private boolean onTabsPage() {
+        return page == Page.TABS;
     }
 
     private boolean hasSelection() {
@@ -554,6 +649,37 @@ public class GuiTabSettings extends GuiContainer implements INEIGuiHandler {
         removeButton.enabled = has;
         upButton.enabled = has && selected > 0;
         downButton.enabled = has && selected < entries.size() - 1;
+        loadPrefixes(entry);
+    }
+
+    /**
+     * Shows the tab's own prefix setting, or a locked tick while the global one already covers every tab, and makes
+     * the search field highlight the way the tab will be read.
+     */
+    private void loadPrefixes(TabEntry entry) {
+        boolean global = TabsConfig.Option.ALWAYS_USE_PREFIXES.get();
+        prefixesBox.visible = entry != null;
+        prefixesBox.enabled = !global;
+        prefixesBox.setChecked(global || entry != null && entry.alwaysUsePrefixes);
+        String info = GtGuiText.TabAlwaysPrefixesInfo.getLocal();
+        if (global) info += "\n" + GtGuiText.TabAlwaysPrefixesGlobal.getLocal();
+        prefixesBox.setTooltip(info);
+        valueField.setFormatter(
+            new SearchTextFormatter(
+                SearchSyntax.forEntry(entry)
+                    .parser()));
+    }
+
+    private enum Page {
+
+        TABS(GtGuiText.PageTabs),
+        SETTINGS(GtGuiText.PageSettings);
+
+        final GtGuiText label;
+
+        Page(GtGuiText label) {
+            this.label = label;
+        }
     }
 
     /** Holds no slots; it exists only because GuiContainer needs one. */

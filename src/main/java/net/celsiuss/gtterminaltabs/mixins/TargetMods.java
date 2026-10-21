@@ -7,7 +7,9 @@ import com.gtnewhorizon.gtnhmixins.builders.TargetModBuilder;
 
 public enum TargetMods implements ITargetMod {
 
-    AE2("appliedenergistics2");
+    AE2("appliedenergistics2"),
+    AE2_FLUID_CRAFTING("ae2fc"),
+    THAUMIC_ENERGISTICS("thaumicenergistics");
 
     private final TargetModBuilder builder;
 

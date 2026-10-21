@@ -18,6 +18,17 @@ public final class ItemIcons {
 
     private ItemIcons() {}
 
+    /** Draws the icon shrunk or grown to {@code size} pixels square. */
+    public static void drawScaled(Minecraft mc, ItemStack stack, int x, int y, int size) {
+        GL11.glPushMatrix();
+        GL11.glTranslatef(x, y, 0.0f);
+        float scale = size / (float) ICON_SIZE;
+        // Uniform, or block normals stretch along z and the item renderer lights them too brightly.
+        GL11.glScalef(scale, scale, scale);
+        draw(mc, stack, 0, 0);
+        GL11.glPopMatrix();
+    }
+
     public static void draw(Minecraft mc, ItemStack stack, int x, int y) {
         if (stack == null) return;
         boolean depth = GL11.glIsEnabled(GL11.GL_DEPTH_TEST);

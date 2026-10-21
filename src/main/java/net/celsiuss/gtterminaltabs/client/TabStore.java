@@ -65,7 +65,12 @@ public class TabStore {
         entries.clear();
         grid = false;
         hidden = false;
-        if (!file.isFile()) return;
+        if (!file.isFile()) {
+            // Only when there is no file at all: an unreadable one is left alone below, so its tabs aren't lost.
+            entries.addAll(DefaultTabs.create());
+            save();
+            return;
+        }
         try (Reader reader = Files.newBufferedReader(file.toPath(), StandardCharsets.UTF_8)) {
             JsonElement root = new JsonParser().parse(reader);
             // Older files are a bare array of tabs.
@@ -82,7 +87,9 @@ public class TabStore {
             if (loaded == null) return;
             for (TabEntry entry : loaded) {
                 if (entry == null) continue;
-                entries.add(new TabEntry(nullToEmpty(entry.name), nullToEmpty(entry.value), entry.icon));
+                TabEntry loadedEntry = new TabEntry(nullToEmpty(entry.name), nullToEmpty(entry.value), entry.icon);
+                loadedEntry.alwaysUsePrefixes = entry.alwaysUsePrefixes;
+                entries.add(loadedEntry);
             }
         } catch (IOException | JsonParseException | IllegalStateException | UnsupportedOperationException e) {
             GtTerminalTabs.LOG.warn("Could not read {}, starting with no tabs", file, e);

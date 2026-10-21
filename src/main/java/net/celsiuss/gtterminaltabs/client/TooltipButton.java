@@ -15,6 +15,7 @@ public class TooltipButton extends GuiButton implements ITooltip {
     private static final int LABEL_PADDING = 4;
 
     private String tooltip;
+    private boolean tooltipHidden;
 
     public TooltipButton(int id, int x, int y, int width, int height, String label) {
         super(id, x, y, width, height, label);
@@ -76,8 +77,18 @@ public class TooltipButton extends GuiButton implements ITooltip {
         this.tooltip = tooltip;
     }
 
+    /** Hides the tooltip for now, such as while a menu is open over the button. */
+    public void setTooltipHidden(boolean hidden) {
+        this.tooltipHidden = hidden;
+    }
+
     @Override
-    public String getMessage() {
+    public final String getMessage() {
+        return tooltipHidden ? "" : message();
+    }
+
+    /** The tooltip, or an empty string for none. */
+    protected String message() {
         if (tooltip != null) return tooltip;
         boolean truncated = Minecraft.getMinecraft().fontRenderer.getStringWidth(displayString) > labelWidth();
         return truncated ? displayString : "";

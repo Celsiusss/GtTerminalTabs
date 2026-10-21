@@ -67,12 +67,11 @@ public class ScrollableButtonList {
 
         int scrolledWidth = width - scrollbar.getWidth() - SCROLLBAR_GAP;
         int fitRows = (height + CELL_GAP) / (CELL_SIZE + CELL_GAP);
-        // Count columns as if the scrollbar were showing, so the grid keeps its shape as tabs are added.
+        // The scrollbar always shows, so cells keep the same width however many tabs there are.
         columns = grid ? fitColumns(scrolledWidth) : 1;
         visibleRows = Math.max(0, Math.min(fitRows, totalRows()));
         scrollable = totalRows() > visibleRows;
-        // Columns share the full width, so grid cells stretch a little rather than leave a gap by the scrollbar.
-        int pitch = (scrollable ? scrolledWidth : width) + CELL_GAP;
+        int pitch = scrolledWidth + CELL_GAP;
 
         List<GuiButton> widgets = new ArrayList<>();
         cellButtons.clear();
@@ -89,9 +88,9 @@ public class ScrollableButtonList {
 
         scrollbar.setLeft(x + width - scrollbar.getWidth())
             .setTop(y)
-            .setHeight(visibleRows * (CELL_SIZE + CELL_GAP) - CELL_GAP);
+            .setHeight(fitRows * (CELL_SIZE + CELL_GAP) - CELL_GAP);
         scrollbar.setRange(0, totalRows() - visibleRows, 1);
-        if (scrollable) widgets.add(new ScrollbarWidget());
+        if (fitRows > 0) widgets.add(new ScrollbarWidget());
 
         syncLabels();
         return widgets;
@@ -229,8 +228,8 @@ public class ScrollableButtonList {
         }
 
         @Override
-        public String getMessage() {
-            return grid ? displayString : super.getMessage();
+        protected String message() {
+            return grid ? displayString : super.message();
         }
 
         private ItemStack icon() {
@@ -261,12 +260,8 @@ public class ScrollableButtonList {
             int knobTop = yPosition + KNOB_INSET + scrollbar.getCurrentScroll() * travel / range;
             int knobBottom = knobTop + KNOB_HEIGHT;
             boolean hovered = mouseX >= xPosition && mouseX < right && mouseY >= knobTop && mouseY < knobBottom;
-            drawRect(
-                xPosition + KNOB_INSET,
-                knobTop,
-                right - KNOB_INSET,
-                knobBottom,
-                hovered ? FlatStyle.KNOB_ACTIVE : FlatStyle.KNOB);
+            int knob = !scrollable ? FlatStyle.KNOB_DISABLED : hovered ? FlatStyle.KNOB_ACTIVE : FlatStyle.KNOB;
+            drawRect(xPosition + KNOB_INSET, knobTop, right - KNOB_INSET, knobBottom, knob);
         }
     }
 }

@@ -12,7 +12,15 @@ public enum GtGuiText implements Localization {
     ListView,
     HideTabs,
     ShowTabs,
-    TabSettings,
+    ShowTabsFiltered,
+    ShowAll,
+    SearchIn,
+    ShowCategory,
+    EditTab,
+    ActiveCategory,
+    HintClearSearch,
+    HintShowAll,
+    HintShowAllAgain,
     NoTabs,
     PanelEmpty,
     Name,
@@ -25,7 +33,14 @@ public enum GtGuiText implements Localization {
     RemoveTab,
     MoveUp,
     MoveDown,
-    Done;
+    Done,
+    PageTabs,
+    PageSettings,
+    OptionAlwaysPrefixes,
+    OptionAlwaysPrefixesInfo,
+    TabAlwaysPrefixes,
+    TabAlwaysPrefixesInfo,
+    TabAlwaysPrefixesGlobal;
 
     @Override
     public String getUnlocalized() {

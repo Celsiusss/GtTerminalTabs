@@ -7,6 +7,8 @@ public class TabEntry {
     public String value;
     /** Null when the tab has no icon. */
     public TabIcon icon;
+    /** Reads this tab's search with fixed prefixes even when the global setting follows NEI's. */
+    public boolean alwaysUsePrefixes;
 
     public TabEntry(String name, String value, TabIcon icon) {
         this.name = name;
