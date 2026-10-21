@@ -42,6 +42,8 @@ public class ScrollableButtonList {
     private int columns = 1;
     private int visibleRows;
     private boolean scrollable;
+    // Tracked here because GuiScrollbar.release() only exists in newer AE2 builds than GTNH 2.8.4's.
+    private boolean dragging;
 
     public ScrollableButtonList(int buttonIdBase, List<TabEntry> entries) {
         this.buttonIdBase = buttonIdBase;
@@ -136,17 +138,19 @@ public class ScrollableButtonList {
     public boolean mousePressed(int mouseX, int mouseY) {
         if (!scrollable || !scrollbar.contains(mouseX, mouseY)) return false;
         scrollbar.click(null, mouseX, mouseY);
+        dragging = true;
         syncLabels();
         return true;
     }
 
     public void mouseDragged(int mouseY) {
+        if (!dragging) return;
         scrollbar.clickMove(mouseY);
         syncLabels();
     }
 
     public void mouseReleased() {
-        scrollbar.release();
+        dragging = false;
     }
 
     /** Re-reads entry names into the cell buttons, e.g. after an entry was renamed. */

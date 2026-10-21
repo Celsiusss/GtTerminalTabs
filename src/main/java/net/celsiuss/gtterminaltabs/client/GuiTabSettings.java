@@ -19,7 +19,9 @@ import org.lwjgl.input.Mouse;
 
 import appeng.client.gui.widgets.ITooltip;
 import codechicken.nei.LayoutManager;
+import codechicken.nei.VisiblityData;
 import codechicken.nei.api.INEIGuiHandler;
+import codechicken.nei.api.TaggedInventoryArea;
 
 /**
  * Editor for the tab list, opened over a terminal. It is a GuiContainer only so NEI shows its item panel, which is
@@ -326,6 +328,23 @@ public class GuiTabSettings extends GuiContainer implements INEIGuiHandler {
     @Override
     public boolean hideItemPanelSlot(GuiContainer gui, int x, int y, int w, int h) {
         return gui == this && x < guiLeft + WIDTH && x + w > guiLeft && y < guiTop + HEIGHT && y + h > guiTop;
+    }
+
+    // NEI 2.8.44, which GTNH 2.8.4 ships, has no default implementations for these.
+
+    @Override
+    public VisiblityData modifyVisiblity(GuiContainer gui, VisiblityData currentVisibility) {
+        return currentVisibility;
+    }
+
+    @Override
+    public Iterable<Integer> getItemSpawnSlots(GuiContainer gui, ItemStack item) {
+        return null;
+    }
+
+    @Override
+    public List<TaggedInventoryArea> getInventoryAreas(GuiContainer gui) {
+        return null;
     }
 
     @Override

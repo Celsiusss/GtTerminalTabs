@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import appeng.api.storage.data.IAEStack;
+import appeng.api.storage.data.IAEItemStack;
 import appeng.client.gui.implementations.GuiMEMonitorable;
 import appeng.core.sync.AppEngPacket;
 import appeng.core.sync.network.INetworkInfo;
@@ -29,7 +29,7 @@ public abstract class MixinPacketMEInventoryUpdate {
 
     @Shadow
     @Final
-    private List<IAEStack<?>> list;
+    private List<IAEItemStack> list;
 
     @Inject(method = "clientPacketData", at = @At("HEAD"))
     private void gtterminaltabs$forwardToTerminal(INetworkInfo network, AppEngPacket packet, EntityPlayer player,

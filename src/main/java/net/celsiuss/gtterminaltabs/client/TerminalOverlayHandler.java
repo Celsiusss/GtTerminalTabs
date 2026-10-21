@@ -1,16 +1,21 @@
 package net.celsiuss.gtterminaltabs.client;
 
+import java.util.List;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.inventory.GuiContainer;
+import net.minecraft.item.ItemStack;
 import net.minecraftforge.client.event.GuiScreenEvent;
 
 import org.lwjgl.input.Mouse;
 
 import appeng.api.events.GuiScrollEvent;
 import appeng.client.gui.implementations.GuiMEMonitorable;
+import codechicken.nei.VisiblityData;
 import codechicken.nei.api.INEIGuiHandler;
+import codechicken.nei.api.TaggedInventoryArea;
 import codechicken.nei.guihook.IContainerInputHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 
@@ -87,6 +92,28 @@ public class TerminalOverlayHandler implements INEIGuiHandler, IContainerInputHa
     @Override
     public boolean hideItemPanelSlot(GuiContainer gui, int x, int y, int w, int h) {
         return asTerminal(gui) != null && panel.overlaps(x, y, w, h);
+    }
+
+    // NEI 2.8.44, which GTNH 2.8.4 ships, has no default implementations for these.
+
+    @Override
+    public VisiblityData modifyVisiblity(GuiContainer gui, VisiblityData currentVisibility) {
+        return currentVisibility;
+    }
+
+    @Override
+    public Iterable<Integer> getItemSpawnSlots(GuiContainer gui, ItemStack item) {
+        return null;
+    }
+
+    @Override
+    public List<TaggedInventoryArea> getInventoryAreas(GuiContainer gui) {
+        return null;
+    }
+
+    @Override
+    public boolean handleDragNDrop(GuiContainer gui, int mouseX, int mouseY, ItemStack draggedStack, int button) {
+        return false;
     }
 
     // NEI's input handlers see mouse input before the screen does. This handler must be first in NEI's list,
