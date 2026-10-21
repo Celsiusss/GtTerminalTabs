@@ -19,6 +19,8 @@ import org.lwjgl.input.Mouse;
 
 import appeng.client.gui.widgets.ITooltip;
 import codechicken.nei.LayoutManager;
+import codechicken.nei.SearchField;
+import codechicken.nei.SearchTextFormatter;
 import codechicken.nei.VisiblityData;
 import codechicken.nei.api.INEIGuiHandler;
 import codechicken.nei.api.TaggedInventoryArea;
@@ -165,6 +167,7 @@ public class GuiTabSettings extends GuiContainer implements INEIGuiHandler {
         nameField.setMaxStringLength(NAME_MAX_LENGTH);
         valueField = new FlatTextField(fontRendererObj, fieldX, valueTop, fieldWidth, FIELD_HEIGHT);
         valueField.setMaxStringLength(VALUE_MAX_LENGTH);
+        valueField.setFormatter(new SearchTextFormatter(SearchField.searchParser));
         iconX = fieldX;
         iconY = valueTop + FIELD_HEIGHT + PADDING + lineHeight;
         loadSelection();

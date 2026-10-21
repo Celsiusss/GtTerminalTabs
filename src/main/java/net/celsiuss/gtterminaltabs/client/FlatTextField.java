@@ -1,13 +1,15 @@
 package net.celsiuss.gtterminaltabs.client;
 
 import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.gui.GuiTextField;
+
+import codechicken.nei.FormattedTextField;
 
 /**
  * A text field drawn as a flat box instead of vanilla's black one. Vanilla's own background is turned off and the
- * field sits inset in the box, so the box's padding is translated into clicks on the text.
+ * field sits inset in the box, so the box's padding is translated into clicks on the text. It is NEI's formatted
+ * field, like AE2's search box, so it can take NEI's search syntax highlighting.
  */
-public class FlatTextField extends GuiTextField {
+public class FlatTextField extends FormattedTextField {
 
     private static final int INSET = 4;
 
