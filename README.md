@@ -5,6 +5,11 @@
 
 Client-side GTNH addon: category tabs beside ME terminals. A tab's NEI search filters the terminal; the search box searches within it.
 
+<img width="1013" height="707" alt="image" src="https://github.com/user-attachments/assets/f7ade4a7-3ced-44f5-a982-dca83c54a246" />
+<img width="338" height="365" alt="image" src="https://github.com/user-attachments/assets/36effa61-c33f-4b68-802c-9de9ad64e8a1" />
+<img width="807" height="580" alt="image" src="https://github.com/user-attachments/assets/cea5029e-fa07-4686-921e-c29044c9b53f" />
+
+
 ## Features
 
 - Click a tab to filter, again to clear. Right-click for show/edit/remove.
